@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=DikTux
+Comment=Sprachdiktat per globalem Hotkey
+Exec=diktux
+Icon=diktux
+Terminal=false
+Categories=Utility;Accessibility;
+StartupNotify=false
