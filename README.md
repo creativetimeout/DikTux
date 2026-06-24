@@ -1,6 +1,6 @@
 # DikTux
 
-Voice dictation daemon for Linux — speak, transcribe, paste. Inspired by [Blitztext](https://github.com/jvossen/blitztext-app) for macOS.
+Voice dictation daemon for Linux — speak, transcribe, paste. Inspired by [Blitztext](https://github.com/cmagnussen/blitztext-app) for macOS.
 
 ## What it does
 
@@ -8,13 +8,13 @@ DikTux runs in the background with a system tray icon. Press a global hotkey to 
 
 ### Workflows
 
-| Workflow | Description | Default Hotkey |
-|---|---|---|
-| **Diktat** | Basic speech-to-text | Super+Shift |
-| **Lokales Diktat** | Offline transcription (no network) | Super+Shift+Ctrl |
-| **Text-Verbesserung** | Transcribe + improve/rewrite | Super+Ctrl |
-| **Dampf Ablassen** | Turn frustrated speech into calm, professional text | Super+Alt |
-| **Emoji-Text** | Transcribe + add fitting emojis | Super+Ctrl+Alt |
+| Workflow              | Description                                         | Default Hotkey   |
+| --------------------- | --------------------------------------------------- | ---------------- |
+| **Diktat**            | Basic speech-to-text                                | Super+Shift      |
+| **Lokales Diktat**    | Offline transcription (no network)                  | Super+Shift+Ctrl |
+| **Text-Verbesserung** | Transcribe + improve/rewrite                        | Super+Ctrl       |
+| **Dampf Ablassen**    | Turn frustrated speech into calm, professional text | Super+Alt        |
+| **Emoji-Text**        | Transcribe + add fitting emojis                     | Super+Ctrl+Alt   |
 
 All hotkeys are fully configurable via the settings UI.
 
