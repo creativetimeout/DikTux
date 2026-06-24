@@ -11,6 +11,7 @@ from diktux.config import (
     save_config,
 )
 from diktux.services.credentials import CredentialsStore
+from diktux.services.local_transcription import LocalTranscriptionService
 
 
 class SettingsViewModel:
@@ -19,10 +20,12 @@ class SettingsViewModel:
         config: Config,
         credentials: CredentialsStore,
         save=save_config,
+        local_transcription_service: LocalTranscriptionService | None = None,
     ) -> None:
         self.config = config
         self._credentials = credentials
         self._save = save
+        self.local_transcription_service = local_transcription_service or LocalTranscriptionService()
 
     def persist(self) -> None:
         self._save(self.config)
@@ -54,6 +57,10 @@ class SettingsViewModel:
 
     def set_secure_local_mode(self, enabled: bool) -> None:
         self.config.app.secure_local_mode_enabled = enabled
+        self.persist()
+
+    def set_local_model(self, model_name: str) -> None:
+        self.config.app.selected_local_model_name = model_name
         self.persist()
 
     def set_hotkey(self, workflow_name: str, keys: list[str]) -> None:

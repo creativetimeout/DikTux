@@ -105,9 +105,18 @@ def _draw_badge(draw: ImageDraw.ImageDraw, size: int, status: TrayStatus, frame:
         draw.ellipse([px - dot, py - dot, px + dot, py + dot], fill=(0, 0, 0, 235))
 
 
+_BG_COLOR = (215, 210, 200, 240)
+
+
 def make_icon(status: TrayStatus, frame: int = 0, size: int = 64) -> Image.Image:
     image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
+    margin = size * 0.06
+    draw.rounded_rectangle(
+        [margin, margin, size - margin, size - margin],
+        radius=size * 0.22,
+        fill=_BG_COLOR,
+    )
     _draw_waveform(draw, size, _alpha_row(status, frame))
     if status is not TrayStatus.IDLE:
         _draw_badge(draw, size, status, frame)

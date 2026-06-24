@@ -37,6 +37,12 @@ class Application:
         self._loop_runner = loop_runner or (lambda coro: None)
         self._builders: dict[str, Callable[[], object]] = {}
 
+    @property
+    def _active_transcriber(self):
+        if self.config.app.secure_local_mode_enabled:
+            return self._local_transcriber
+        return self._transcriber
+
     def register_workflow_builder(
         self, name: str, builder: Callable[[], object]
     ) -> None:
@@ -49,7 +55,7 @@ class Application:
         if workflow_name == "text_improver":
             return TextImprovementWorkflow(
                 self._recorder_factory(),
-                self._transcriber,
+                self._active_transcriber,
                 self._llm,
                 self.config.text_improvement,
                 language=self.config.transcription.language,
@@ -58,7 +64,7 @@ class Application:
         if workflow_name == "dampf_ablassen":
             return CalmDownWorkflow(
                 self._recorder_factory(),
-                self._transcriber,
+                self._active_transcriber,
                 self._llm,
                 self.config.dampf_ablassen,
                 custom_terms=self.config.text_improvement.custom_terms,
@@ -68,7 +74,7 @@ class Application:
         if workflow_name == "emoji_text":
             return EmojiTextWorkflow(
                 self._recorder_factory(),
-                self._transcriber,
+                self._active_transcriber,
                 self._llm,
                 self.config.emoji_text,
                 custom_terms=self.config.text_improvement.custom_terms,
@@ -84,14 +90,9 @@ class Application:
                 type_name="local_transcription",
             )
 
-        transcriber = (
-            self._local_transcriber
-            if self.config.app.secure_local_mode_enabled
-            else self._transcriber
-        )
         return TranscriptionWorkflow(
             self._recorder_factory(),
-            transcriber,
+            self._active_transcriber,
             custom_terms=self.config.text_improvement.custom_terms,
             language=self.config.transcription.language,
             type_name="transcription",

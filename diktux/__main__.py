@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import signal
 import sys
 import threading
 
 
+def _ensure_utf8_io() -> None:
+    import os
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8:replace")
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name)
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> None:
+    _ensure_utf8_io()
     from diktux import __version__
     from diktux.app import Application
     from diktux.config import load_config
@@ -16,6 +28,7 @@ def main() -> None:
     from diktux.services.hotkey import HotkeyListener, HotkeyMatcher
     from diktux.services.llm import LLMService
     from diktux.services.paste import PasteService
+    from diktux.services.local_transcription import LocalTranscriptionService
     from diktux.services.transcription import RemoteTranscriptionService
     from diktux.state import StateManager
     from diktux.ui.tray import TrayController
@@ -24,6 +37,9 @@ def main() -> None:
     credentials = CredentialsStore()
     paste_service = PasteService()
     transcriber = RemoteTranscriptionService(credentials=credentials)
+    local_transcriber = LocalTranscriptionService(
+        default_model=config.app.selected_local_model_name,
+    )
     llm = LLMService(credentials=credentials)
 
     loop = asyncio.new_event_loop()
@@ -31,10 +47,19 @@ def main() -> None:
     def loop_runner(coro):
         asyncio.run_coroutine_threadsafe(coro, loop)
 
+    def reload_config(_signum=None, _frame=None):
+        new_config = load_config()
+        app.config = new_config
+        matcher._hotkeys = new_config.hotkeys
+        local_transcriber._default_model = new_config.app.selected_local_model_name
+        print("[DikTux] Einstellungen neu geladen.", file=sys.stderr)
+
+    signal.signal(signal.SIGUSR1, reload_config)
+
     def open_settings():
         from diktux.ui.settings_window import open_settings_window
 
-        open_settings_window(None)
+        open_settings_window(daemon_pid=os.getpid())
 
     tray = TrayController(
         on_open_settings=open_settings,
@@ -52,6 +77,7 @@ def main() -> None:
         paste_service=paste_service,
         recorder_factory=lambda: AudioRecorder(),
         transcriber=transcriber,
+        local_transcriber=local_transcriber,
         state=state,
         llm=llm,
         loop_runner=loop_runner,

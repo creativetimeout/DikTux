@@ -34,7 +34,7 @@ class OnboardingViewModel:
         self._save = save
 
     def is_configured(self) -> bool:
-        return self._credentials.is_configured()
+        return self.config.app.secure_local_mode_enabled or self._credentials.is_configured()
 
     def should_show(self) -> bool:
         return not self.is_configured() and not self.config.app.has_seen_onboarding

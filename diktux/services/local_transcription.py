@@ -23,22 +23,39 @@ def models_dir() -> Path:
     return Path.home() / ".local" / "share" / "diktux" / "models"
 
 
+def _detect_device() -> tuple[str, str]:
+    try:
+        import ctypes
+        ctypes.cdll.LoadLibrary("libcublas.so.12")
+        return "cuda", "int8"
+    except OSError:
+        return "cpu", "int8"
+
+
 class LocalTranscriptionService:
     def __init__(
         self,
         model_factory=None,
         models_dir: Path | None = None,
-        device: str = "auto",
-        compute_type: str = "int8",
+        device: str | None = None,
+        compute_type: str | None = None,
+        default_model: str = RECOMMENDED_MODEL,
     ) -> None:
         self._model_factory = model_factory or self._default_model_factory
         self._models_dir = Path(models_dir) if models_dir else globals()["models_dir"]()
+        if device is None or compute_type is None:
+            detected_device, detected_compute = _detect_device()
+            device = device or detected_device
+            compute_type = compute_type or detected_compute
         self._device = device
         self._compute_type = compute_type
+        self._default_model = default_model
         self._cache: dict[str, object] = {}
 
     @staticmethod
     def _default_model_factory(model_name, device, compute_type, download_root):
+        import os
+        os.environ.setdefault("PYTHONIOENCODING", "utf-8:replace")
         from faster_whisper import WhisperModel
 
         return WhisperModel(
@@ -60,6 +77,13 @@ class LocalTranscriptionService:
 
     def is_model_available(self, model_name: str) -> bool:
         return (self._models_dir / f"models--Systran--faster-whisper-{model_name}").exists()
+
+    def _download_sync(self, model_name: str) -> None:
+        self._models_dir.mkdir(parents=True, exist_ok=True)
+        self._get_model(model_name)
+
+    async def download_model(self, model_name: str) -> None:
+        await asyncio.to_thread(self._download_sync, model_name)
 
     def _transcribe_sync(
         self,
@@ -94,8 +118,9 @@ class LocalTranscriptionService:
         audio_path: Path,
         custom_terms: list[str] | None = None,
         language: str = "de",
-        model_name: str = RECOMMENDED_MODEL,
+        model_name: str | None = None,
     ) -> str:
+        model_name = model_name or self._default_model
         try:
             return await asyncio.to_thread(
                 self._transcribe_sync,

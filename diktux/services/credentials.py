@@ -7,6 +7,16 @@ from typing import Protocol
 API_KEY_NAME = "openai_api_key"
 _SERVICE = "diktux"
 _BULLET = "•"
+_UNICODE_DASHES = str.maketrans({
+    "‐": "-",  # hyphen
+    "‑": "-",  # non-breaking hyphen
+    "‒": "-",  # figure dash
+    "–": "-",  # en dash
+    "—": "-",  # em dash
+    "―": "-",  # horizontal bar
+    "﹘": "-",  # small em dash
+    "－": "-",  # fullwidth hyphen-minus
+})
 
 
 class CredentialsBackend(Protocol):
@@ -76,14 +86,18 @@ class CredentialsStore:
     def __init__(self, backend: CredentialsBackend | None = None) -> None:
         self._backend = backend or SecretStorageBackend()
 
+    @staticmethod
+    def _sanitize_key(value: str) -> str:
+        return value.translate(_UNICODE_DASHES).strip()
+
     def get_api_key(self) -> str | None:
         value = self._backend.get(API_KEY_NAME)
         if value is None or value == "":
             return None
-        return value
+        return self._sanitize_key(value)
 
     def set_api_key(self, value: str) -> None:
-        self._backend.set(API_KEY_NAME, value)
+        self._backend.set(API_KEY_NAME, self._sanitize_key(value))
 
     def delete_api_key(self) -> None:
         self._backend.delete(API_KEY_NAME)
