@@ -7,6 +7,9 @@ from collections.abc import Callable
 from diktux.config import Config
 from diktux.services.hotkey import HotkeyEvent, HotkeyEventType
 from diktux.state import StateManager
+from diktux.workflows.calm_down import CalmDownWorkflow
+from diktux.workflows.emoji_text import EmojiTextWorkflow
+from diktux.workflows.text_improvement import TextImprovementWorkflow
 from diktux.workflows.transcription import TranscriptionWorkflow
 
 
@@ -20,6 +23,7 @@ class Application:
         transcriber,
         state: StateManager,
         local_transcriber=None,
+        llm=None,
         loop_runner: Callable[[object], None] | None = None,
     ) -> None:
         self.config = config
@@ -28,6 +32,7 @@ class Application:
         self._recorder_factory = recorder_factory
         self._transcriber = transcriber
         self._local_transcriber = local_transcriber or transcriber
+        self._llm = llm
         self.state = state
         self._loop_runner = loop_runner or (lambda coro: None)
         self._builders: dict[str, Callable[[], object]] = {}
@@ -40,6 +45,35 @@ class Application:
     def build_workflow(self, workflow_name: str):
         if workflow_name in self._builders:
             return self._builders[workflow_name]()
+
+        if workflow_name == "text_improver":
+            return TextImprovementWorkflow(
+                self._recorder_factory(),
+                self._transcriber,
+                self._llm,
+                self.config.text_improvement,
+                language=self.config.transcription.language,
+            )
+
+        if workflow_name == "dampf_ablassen":
+            return CalmDownWorkflow(
+                self._recorder_factory(),
+                self._transcriber,
+                self._llm,
+                self.config.dampf_ablassen,
+                custom_terms=self.config.text_improvement.custom_terms,
+                language=self.config.transcription.language,
+            )
+
+        if workflow_name == "emoji_text":
+            return EmojiTextWorkflow(
+                self._recorder_factory(),
+                self._transcriber,
+                self._llm,
+                self.config.emoji_text,
+                custom_terms=self.config.text_improvement.custom_terms,
+                language=self.config.transcription.language,
+            )
 
         if workflow_name == "local_transcription":
             return TranscriptionWorkflow(
