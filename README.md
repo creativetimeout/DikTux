@@ -51,24 +51,34 @@ Grant hotkey access (requires re-login):
 sudo usermod -aG input $USER
 ```
 
-### Install DikTux
+### From source (current)
 
 ```bash
-pip install diktux
-```
+sudo apt install pipx
+pipx ensurepath
 
-With local Whisper support:
-
-```bash
-pip install diktux[local]
-```
-
-### From source
-
-```bash
 git clone https://github.com/jvossen/diktux.git
 cd diktux
+pipx install ".[local]"
+```
+
+Without local Whisper (smaller install, no GPU dependencies):
+
+```bash
+pipx install "."
+```
+
+For development:
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[local,gui,dev]"
+```
+
+### From PyPI (once published)
+
+```bash
+pipx install "diktux[local]"
 ```
 
 ## Usage
