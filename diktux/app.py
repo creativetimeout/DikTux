@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from diktux.config import Config
+from diktux.config import Config, HotkeyMode
 from diktux.services.hotkey import HotkeyEvent, HotkeyEventType
 from diktux.state import StateManager
 from diktux.workflows.calm_down import CalmDownWorkflow
@@ -98,6 +98,19 @@ class Application:
         )
 
     def handle_hotkey_event(self, event: HotkeyEvent) -> None:
+        if event.type is HotkeyEventType.CANCEL:
+            workflow = self.state.active_workflow
+            if workflow is not None:
+                workflow.cancel()
+            self.state.active_workflow = None
+            return
+
+        if self.config.hotkeys.mode is HotkeyMode.TOGGLE:
+            self._handle_toggle(event)
+        else:
+            self._handle_hold(event)
+
+    def _handle_hold(self, event: HotkeyEvent) -> None:
         if event.type is HotkeyEventType.DOWN and event.workflow:
             workflow = self.build_workflow(event.workflow)
             self.state.attach_workflow(workflow)
@@ -106,8 +119,16 @@ class Application:
             workflow = self.state.active_workflow
             if workflow is not None and workflow.is_recording:
                 self._loop_runner(workflow.stop())
-        elif event.type is HotkeyEventType.CANCEL:
-            workflow = self.state.active_workflow
-            if workflow is not None:
-                workflow.cancel()
-            self.state.active_workflow = None
+
+    def _handle_toggle(self, event: HotkeyEvent) -> None:
+        if event.type is not HotkeyEventType.DOWN or not event.workflow:
+            return
+
+        current = self.state.active_workflow
+        if current is not None and current.is_recording:
+            self._loop_runner(current.stop())
+            return
+
+        workflow = self.build_workflow(event.workflow)
+        self.state.attach_workflow(workflow)
+        workflow.start()
