@@ -71,3 +71,71 @@ class HotkeyMatcher:
     def escape_pressed(self) -> None:
         self._active_combo = None
         self._emit(HotkeyEvent(HotkeyEventType.CANCEL, None))
+
+
+import threading
+
+
+class HotkeyListener:
+    def __init__(self, matcher: HotkeyMatcher, device_factory=None) -> None:
+        self._matcher = matcher
+        self._device_factory = device_factory or self._default_device_factory
+        self.pressed_keys: set[str] = set()
+        self._thread: threading.Thread | None = None
+        self._running = False
+
+    @staticmethod
+    def _default_device_factory():
+        import evdev
+
+        devices = []
+        for path in evdev.list_devices():
+            device = evdev.InputDevice(path)
+            caps = device.capabilities()
+            if evdev.ecodes.EV_KEY in caps:
+                devices.append(device)
+        return devices
+
+    def feed_event(self, key_name: str, value: int) -> None:
+        if key_name == "KEY_ESC" and value == 1:
+            self._matcher.escape_pressed()
+            return
+
+        if value == 1:
+            self.pressed_keys.add(key_name)
+        elif value == 0:
+            self.pressed_keys.discard(key_name)
+
+        self._matcher.update_keys(self.pressed_keys)
+
+    def _run(self) -> None:
+        import evdev
+        import select
+
+        devices = self._device_factory()
+        fd_to_device = {dev.fd: dev for dev in devices}
+        while self._running:
+            ready, _, _ = select.select(fd_to_device, [], [], 0.5)
+            for fd in ready:
+                device = fd_to_device[fd]
+                for event in device.read():
+                    if event.type != evdev.ecodes.EV_KEY:
+                        continue
+                    key_name = evdev.ecodes.KEY.get(event.code)
+                    if isinstance(key_name, list):
+                        key_name = key_name[0]
+                    if key_name:
+                        self.feed_event(key_name, event.value)
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        self._running = True
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._running = False
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
